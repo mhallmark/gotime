@@ -70,13 +70,7 @@ func (l *Timeline) RunningEvent() (*TimeEntry, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	for _, ent := range l.entries.Entries {
-		if ent.End == nil {
-			return ent, nil
-		}
-	}
-
-	return nil, ErrNotExist
+	return l.runningEvent()
 }
 
 func (l *Timeline) Start(when time.Time, notes []string) *TimeEntry {
@@ -104,7 +98,7 @@ func (l *Timeline) AddNote(note string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	cur, err := l.RunningEvent()
+	cur, err := l.runningEvent()
 	if err != nil {
 		return err
 	}
@@ -219,4 +213,14 @@ func (l *Timeline) Close() error {
 	}
 
 	return nil
+}
+
+func (l *Timeline) runningEvent() (*TimeEntry, error) {
+	for _, ent := range l.entries.Entries {
+		if ent.End == nil {
+			return ent, nil
+		}
+	}
+
+	return nil, ErrNotExist
 }
