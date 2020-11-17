@@ -24,6 +24,8 @@ func main() {
 		Use: "gotime <command>",
 	}
 
+	root.Version = "1.1.0"
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		home = "/"
