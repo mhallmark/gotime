@@ -113,10 +113,13 @@ func (l *Timeline) ReportFormat() string {
 	defer l.mu.RUnlock()
 	b := strings.Builder{}
 
-	b.WriteString(fmt.Sprintf("Time for %s\n", l.entries.Owner))
-
 	grps := map[string][]*TimeEntry{}
+	total := time.Duration(0)
 	for _, ent := range l.entries.Entries {
+		if ent.End != nil {
+			total = total + ent.End.Sub(ent.Start)
+		}
+
 		header := ent.Start.Format("January 2, 2006")
 
 		if grp, ok := grps[header]; ok {
@@ -127,11 +130,16 @@ func (l *Timeline) ReportFormat() string {
 		grps[header] = []*TimeEntry{ent}
 	}
 
-	var groups = []struct {
+	b.WriteString(fmt.Sprintf("Time for %s - (%v)\n", l.entries.Owner, total.Round(time.Second)))
+
+	type group struct {
 		header    string
+		date      time.Time
 		totalTime time.Duration
 		entries   []*TimeEntry
-	}{}
+	}
+
+	var groups = []group{}
 
 	now := time.Now()
 	for header, ents := range grps {
@@ -146,19 +154,23 @@ func (l *Timeline) ReportFormat() string {
 			dur = dur + d
 		}
 
-		groups = append(groups, struct {
-			header    string
-			totalTime time.Duration
-			entries   []*TimeEntry
-		}{
-			header:    header,
+		groups = append(groups, group{
+			header: header,
+			date: func() time.Time {
+				d, err := time.Parse("January 2, 2006", header)
+				if err != nil {
+					panic(err)
+				}
+
+				return d
+			}(),
 			totalTime: dur,
 			entries:   ents,
 		})
 	}
 
 	sort.SliceStable(groups, func(i, j int) bool {
-		return groups[i].header > groups[j].header
+		return groups[i].date.After(groups[j].date)
 	})
 
 	for _, group := range groups {
